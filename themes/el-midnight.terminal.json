@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "scheme": {
+    "name": "EL Midnight",
+    "background": "#0A1028",
+    "foreground": "#E8F1FF",
+    "cursorColor": "#73A5FF",
+    "selectionBackground": "#34466D",
+    "black": "#0A1028",
+    "red": "#FF6B6B",
+    "green": "#81D4A0",
+    "yellow": "#E6A13A",
+    "blue": "#73A5FF",
+    "purple": "#B69CFF",
+    "cyan": "#67D4E8",
+    "white": "#D8E3F8",
+    "brightBlack": "#66758F",
+    "brightRed": "#FF9B96",
+    "brightGreen": "#A7E8BE",
+    "brightYellow": "#FFD48A",
+    "brightBlue": "#9FC2FF",
+    "brightPurple": "#D1C2FF",
+    "brightCyan": "#9BE7F2",
+    "brightWhite": "#FFFFFF"
+  },
+  "profile": {
+    "colorScheme": "EL Midnight",
+    "cursorShape": "bar",
+    "font": {
+      "face": "CaskaydiaCove NFM",
+      "size": 11,
+      "weight": "normal"
+    },
+    "opacity": 95,
+    "padding": "12, 10, 12, 10",
+    "scrollbarState": "hidden",
+    "useAcrylic": true
+  }
+}

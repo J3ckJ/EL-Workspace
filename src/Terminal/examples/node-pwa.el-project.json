@@ -1,0 +1,64 @@
+{
+  "$schema": "https://el-system-tools.local/schemas/el-project.schema.json",
+  "schemaVersion": 1,
+  "displayName": "Node PWA",
+  "stack": "pwa",
+  "presentation": {
+    "accent": "Cyan",
+    "icon": "◫"
+  },
+  "requirements": {
+    "commands": [
+      "node",
+      "npm"
+    ]
+  },
+  "tasks": {
+    "main": {
+      "label": "Консоль Node PWA",
+      "tabTitle": "Node PWA · Main"
+    },
+    "frontend-tests": {
+      "label": "Проверить PWA-клиент"
+    },
+    "api-tests": {
+      "label": "Проверить Fastify API"
+    },
+    "community-tests": {
+      "label": "Проверить Community-сценарий",
+      "tabTitle": "Node PWA · Community tests",
+      "icon": "◎",
+      "steps": [
+        {
+          "runner": "packageScript",
+          "manager": "npm",
+          "script": "test:community-load",
+          "arguments": []
+        }
+      ]
+    }
+  },
+  "palette": [
+    "full-tests",
+    "backend-build",
+    "community-tests"
+  ],
+  "workspace": [
+    {
+      "task": "main",
+      "action": "newTab"
+    },
+    {
+      "task": "frontend-tests",
+      "action": "splitPane",
+      "split": "right",
+      "size": 0.42
+    },
+    {
+      "task": "api-tests",
+      "action": "splitPane",
+      "split": "down",
+      "size": 0.5
+    }
+  ]
+}

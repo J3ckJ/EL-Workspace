@@ -1,0 +1,293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://el-system-tools.local/schemas/el-project.schema.json",
+  "title": "EL Project manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "stack": {
+      "enum": [
+        "pwa",
+        "compose",
+        "node",
+        "python",
+        "dotnet",
+        "rust",
+        "go",
+        "generic"
+      ]
+    },
+    "repository": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uri"
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accent": {
+          "enum": [
+            "Black",
+            "DarkBlue",
+            "DarkGreen",
+            "DarkCyan",
+            "DarkRed",
+            "DarkMagenta",
+            "DarkYellow",
+            "Gray",
+            "DarkGray",
+            "Blue",
+            "Green",
+            "Cyan",
+            "Red",
+            "Magenta",
+            "Yellow",
+            "White"
+          ]
+        },
+        "icon": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8
+        }
+      }
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commands": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          }
+        }
+      }
+    },
+    "tasks": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "$ref": "#/$defs/id"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/taskPatch"
+      }
+    },
+    "disabledTasks": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/id"
+      }
+    },
+    "palette": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      }
+    },
+    "workspace": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/pane"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+    },
+    "arguments": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 512,
+        "pattern": "^[^\\u0000-\\u0008\\u000A-\\u001F\\u007F]*$"
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runner"
+      ],
+      "properties": {
+        "runner": {
+          "enum": [
+            "gitStatus",
+            "workspaceShell",
+            "pythonModule",
+            "packageScript",
+            "packageBinary",
+            "powershellFile",
+            "installedTool",
+            "dotnet",
+            "cargo",
+            "go",
+            "openRepository",
+            "message"
+          ]
+        },
+        "arguments": {
+          "$ref": "#/$defs/arguments"
+        },
+        "cwd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "module": {
+          "enum": [
+            "unittest",
+            "pytest",
+            "uvicorn"
+          ]
+        },
+        "manager": {
+          "enum": [
+            "npm",
+            "pnpm",
+            "yarn",
+            "bun"
+          ]
+        },
+        "script": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]{0,63}$"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verb": {
+          "enum": [
+            "build",
+            "check",
+            "test",
+            "run",
+            "vet"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "continueOnError": {
+          "type": "boolean"
+        },
+        "preferred": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "base",
+            "path"
+          ],
+          "properties": {
+            "base": {
+              "const": "LocalAppData"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "taskPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "tabTitle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "icon": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "environment": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 512,
+            "pattern": "^[^\\u0000-\\u0008\\u000A-\\u001F\\u007F]*$"
+          }
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        }
+      }
+    },
+    "pane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task",
+        "action"
+      ],
+      "properties": {
+        "task": {
+          "$ref": "#/$defs/id"
+        },
+        "action": {
+          "enum": [
+            "newTab",
+            "splitPane"
+          ]
+        },
+        "split": {
+          "enum": [
+            "right",
+            "down"
+          ]
+        },
+        "size": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 0.9
+        }
+      }
+    }
+  }
+}

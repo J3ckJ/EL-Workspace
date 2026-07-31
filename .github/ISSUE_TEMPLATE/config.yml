@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Закрытое сообщение об уязвимости
+    url: https://github.com/J3ckJ/EL-Workspace/security/advisories/new
+    about: Не публикуйте сведения о неисправленной уязвимости в открытом issue.

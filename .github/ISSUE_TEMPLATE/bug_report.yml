@@ -1,0 +1,63 @@
+name: Сообщение об ошибке
+description: Воспроизводимая ошибка EL Workspace без чувствительных данных
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за сообщение. Для уязвимостей используйте private security advisory, а не публичный issue.
+
+  - type: input
+    id: version
+    attributes:
+      label: Версия EL Workspace
+      description: Результат `el-workspace version`.
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Окружение
+      description: Версии Windows, PowerShell 7 и Windows Terminal. Удалите имя пользователя и персональные пути.
+      placeholder: Windows 11 24H2; PowerShell 7.x; Windows Terminal 1.x
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      description: Минимальная последовательность команд на безопасном тестовом проекте.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактическое поведение
+      description: Не публикуйте токены, private remote URL, полный projects.json, profile или backup.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Проверка перед отправкой
+      options:
+        - label: Я выполнил(а) `el-workspace doctor` и приложил(а) только обезличенный вывод.
+          required: true
+        - label: В сообщении нет секретов и персональных путей.
+          required: true
+        - label: Это не закрытая уязвимость безопасности.
+          required: true

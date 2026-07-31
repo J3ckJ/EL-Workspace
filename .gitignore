@@ -1,0 +1,52 @@
+# Release and test output
+/dist/
+/artifacts/
+/coverage/
+TestResults/
+*.zip
+*.nupkg
+*.sha256
+
+# Local EL Workspace state (never commit user data)
+/projects.json
+/launcher-state.json
+/install.json
+/Backups/
+/backups/
+/.el-workspace-test/
+*.inventory.local.json
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.secret
+*.secrets
+*.credential
+*.credentials
+
+# PowerShell and build caches
+*.clixml
+*.ps1xml.user
+*.tmp
+*.temp
+*.bak
+*.log
+.cache/
+
+# Editors
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# Operating systems
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Package managers
+node_modules/
+packages/
