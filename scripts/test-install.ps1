@@ -9,6 +9,10 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $installerPath = Join-Path $repositoryRoot 'install.ps1'
 $buildPath = Join-Path $PSScriptRoot 'build-release.ps1'
+$releaseVersion = (Get-Content `
+    -LiteralPath (Join-Path $repositoryRoot 'VERSION') `
+    -Raw `
+    -Encoding UTF8).Trim()
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) (
     'EL-Workspace-tests-' + [Guid]::NewGuid().ToString('N')
 )
@@ -261,14 +265,14 @@ function Assert-InstalledState {
     }
     $versionOutput = @(el-workspace version 6>&1) -join "`n"
     Assert-True `
-        -Condition ($versionOutput -match '0\.1\.0') `
+        -Condition ($versionOutput -match [regex]::Escape($releaseVersion)) `
         -Message 'el-workspace must work immediately after profile source'
 }
 
 [void] [IO.Directory]::CreateDirectory($testRoot)
 Set-TestEnvironment
 try {
-    Write-Host 'TEST 1/10 · parser and deterministic release build'
+    Write-Host 'TEST 1/10 · parser, irm|iex binding and deterministic release build'
     foreach ($path in @($installerPath, $buildPath, $PSCommandPath)) {
         $tokens = $null
         $errors = $null
@@ -282,8 +286,36 @@ try {
             -Expected 0 `
             -Message "PowerShell parser errors in $path"
     }
+    $installerTokens = $null
+    $installerErrors = $null
+    $installerAst = [Management.Automation.Language.Parser]::ParseFile(
+        $installerPath,
+        [ref] $installerTokens,
+        [ref] $installerErrors
+    )
+    $bindingProbe = (
+        "[CmdletBinding()]`n" +
+        $installerAst.ParamBlock.Extent.Text +
+        "`n'BOOTSTRAP_BINDING_OK'"
+    )
+    $bindingOutput = @($bindingProbe | Invoke-Expression)
+    Assert-Equal `
+        -Actual ($bindingOutput -join '') `
+        -Expected 'BOOTSTRAP_BINDING_OK' `
+        -Message 'installer param block must support irm | iex execution'
+    $invalidHashRejected = $false
+    try {
+        & $installerPath -SkipDependencies -SourceSha256 'not-a-sha256'
+    }
+    catch {
+        $invalidHashRejected = $true
+    }
+    Assert-True `
+        -Condition $invalidHashRejected `
+        -Message 'invalid -SourceSha256 must be rejected explicitly'
     & $buildPath -OutputPath $distPath
-    $archivePath = Join-Path $distPath 'EL-Workspace-0.1.0.zip'
+    $archiveName = "EL-Workspace-$releaseVersion.zip"
+    $archivePath = Join-Path $distPath $archiveName
     $archiveHash = (Get-FileHash `
         -LiteralPath $archivePath `
         -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -297,7 +329,7 @@ try {
         -Message 'SHA256SUMS.txt was not created'
     & $buildPath -OutputPath $secondDistPath
     foreach ($assetName in @(
-        'EL-Workspace-0.1.0.zip',
+        $archiveName,
         'install.ps1',
         'SHA256SUMS.txt'
     )) {
@@ -417,7 +449,7 @@ try {
         [IO.Compression.ZipArchiveMode]::Update
     )
     try {
-        $entry = $zip.CreateEntry('EL-Workspace-0.1.0/../escape.txt')
+        $entry = $zip.CreateEntry("EL-Workspace-$releaseVersion/../escape.txt")
         $writer = [IO.StreamWriter]::new($entry.Open())
         try {
             $writer.Write('must-not-escape')
