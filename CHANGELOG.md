@@ -9,6 +9,16 @@
 
 - Раздел зарезервирован для изменений следующего релиза.
 
+## [0.1.1] — 2026-07-31
+
+### Исправлено
+
+- one-line установка `irm ... | iex` больше не конфликтует с валидацией
+  необязательного `SourceSha256`; формат SHA-256 по-прежнему проверяется до
+  работы с локальным ZIP;
+- regression suite теперь отдельно воспроизводит PowerShell binding bootstrap
+  через pipeline, то есть именно публичный сценарий установки.
+
 ## [0.1.0] — 2026-07-31
 
 ### Добавлено
@@ -44,5 +54,6 @@
   components;
 - удаление ограничено каталогами EL Workspace и требует подтверждения.
 
-[Unreleased]: https://github.com/J3ckJ/EL-Workspace/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/J3ckJ/EL-Workspace/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/J3ckJ/EL-Workspace/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/J3ckJ/EL-Workspace/releases/tag/v0.1.0

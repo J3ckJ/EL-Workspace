@@ -10,14 +10,13 @@ param(
     [string] $SourcePath,
 
     [Parameter(DontShow)]
-    [ValidatePattern('^[a-fA-F0-9]{64}$')]
     [string] $SourceSha256
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$script:Version = '0.1.0'
+$script:Version = '0.1.1'
 $script:Repository = 'J3ckJ/EL-Workspace'
 $script:ArchiveName = "EL-Workspace-$($script:Version).zip"
 $script:ArchiveRootName = "EL-Workspace-$($script:Version)"
@@ -35,6 +34,10 @@ $script:TerminalSettingsBytes = $null
 $script:BackupPath = $null
 $script:PreviousRuntimePath = $null
 $script:NextRuntimePath = $null
+
+if ($SourceSha256 -and $SourceSha256 -notmatch '^[a-fA-F0-9]{64}$') {
+    throw '-SourceSha256 должен быть SHA-256 из 64 шестнадцатеричных символов.'
+}
 
 function Write-Info {
     param([Parameter(Mandatory)][string] $Message)

@@ -75,7 +75,8 @@ notepad $installer
 ```
 
 `SHA256SUMS.txt` содержит отдельные записи для bootstrap и release-архива.
-Bootstrap загружает `EL-Workspace-0.1.0.zip` и manifest из одного Release,
+Bootstrap загружает versioned `EL-Workspace-<version>.zip` и manifest из
+одного Release,
 требует ровно одну запись для ожидаемого имени ZIP и сравнивает SHA-256 до
 распаковки. Архив дополнительно проверяется на абсолютные пути, path traversal
 и reparse points.
@@ -84,13 +85,15 @@ Bootstrap загружает `EL-Workspace-0.1.0.zip` и manifest из одно�
 
 ```powershell
 $base = 'https://github.com/J3ckJ/EL-Workspace/releases/latest/download'
-$archive = Join-Path $env:TEMP 'EL-Workspace-0.1.0.zip'
+$version = '0.1.1'
+$archiveName = "EL-Workspace-$version.zip"
+$archive = Join-Path $env:TEMP $archiveName
 $sums = Join-Path $env:TEMP 'EL-Workspace-SHA256SUMS.txt'
-Invoke-WebRequest "$base/EL-Workspace-0.1.0.zip" -OutFile $archive
+Invoke-WebRequest "$base/$archiveName" -OutFile $archive
 Invoke-WebRequest "$base/SHA256SUMS.txt" -OutFile $sums
 
 $matching = @(Get-Content -LiteralPath $sums | Where-Object {
-  $_ -match '(?i)^[0-9a-f]{64}\s+\*?EL-Workspace-0\.1\.0\.zip$'
+  $_ -match ('(?i)^[0-9a-f]{64}\s+\*?' + [regex]::Escape($archiveName) + '$')
 })
 if ($matching.Count -ne 1) { throw 'Checksum entry не найдена или неоднозначна.' }
 $expected = ($matching[0] -split '\s+', 2)[0]
