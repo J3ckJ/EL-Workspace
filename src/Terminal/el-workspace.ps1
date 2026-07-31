@@ -24,7 +24,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$script:Version = '0.1.1'
+$script:Version = '0.1.2'
 $script:Repository = 'J3ckJ/EL-Workspace'
 $script:TestMode = $env:EL_WORKSPACE_TEST_MODE -eq '1'
 if ($script:TestMode) {

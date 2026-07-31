@@ -220,7 +220,12 @@ function Assert-RelativePathInsideRoot {
         throw "Ожидался безопасный относительный путь: $RelativePath"
     }
 
-    $candidate = [IO.Path]::GetFullPath((Join-Path $Root $RelativePath))
+    # Join-Path resolves PowerShell drives and throws when a registered
+    # project lives on a temporarily unavailable volume. Validation here is
+    # lexical; execution performs its own existence checks later.
+    $candidate = [IO.Path]::GetFullPath(
+        [IO.Path]::Combine($Root, $RelativePath)
+    )
     $relative = [IO.Path]::GetRelativePath($Root, $candidate)
     if ($relative -eq '..' -or $relative.StartsWith(
         '..' + [IO.Path]::DirectorySeparatorChar,

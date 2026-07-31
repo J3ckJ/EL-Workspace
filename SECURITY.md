@@ -85,7 +85,7 @@ Bootstrap загружает versioned `EL-Workspace-<version>.zip` и manifest 
 
 ```powershell
 $base = 'https://github.com/J3ckJ/EL-Workspace/releases/latest/download'
-$version = '0.1.1'
+$version = '0.1.2'
 $archiveName = "EL-Workspace-$version.zip"
 $archive = Join-Path $env:TEMP $archiveName
 $sums = Join-Path $env:TEMP 'EL-Workspace-SHA256SUMS.txt'
