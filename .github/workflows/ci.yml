@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'agent/**'
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-windows:
+    name: PowerShell and installer smoke tests
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate PowerShell syntax and JSON
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $parseFailures = [System.Collections.Generic.List[string]]::new()
+          foreach ($file in @(Get-ChildItem -Path . -Filter '*.ps1' -File -Recurse)) {
+            $tokens = $null
+            $errors = $null
+            [void] [System.Management.Automation.Language.Parser]::ParseFile(
+              $file.FullName,
+              [ref] $tokens,
+              [ref] $errors
+            )
+            foreach ($parseError in @($errors)) {
+              $parseFailures.Add("$($file.FullName): $($parseError.Message)")
+            }
+          }
+          if ($parseFailures.Count -gt 0) {
+            throw ($parseFailures -join [Environment]::NewLine)
+          }
+
+          foreach ($file in @(Get-ChildItem -Path . -Filter '*.json' -File -Recurse)) {
+            [void] (Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8 |
+              ConvertFrom-Json -Depth 100)
+          }
+
+      - name: Test isolated installation lifecycle
+        shell: pwsh
+        run: pwsh -NoProfile -File .\scripts\test-install.ps1

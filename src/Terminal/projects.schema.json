@@ -1,0 +1,436 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://el-system-tools.local/schemas/projects.schema.json",
+  "title": "EL Project Manager registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "defaults",
+    "projects"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terminalProfile"
+      ],
+      "properties": {
+        "terminalProfile": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/project"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+    },
+    "arguments": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 512,
+        "pattern": "^[^\\u0000-\\u0008\\u000A-\\u001F\\u007F]*$"
+      }
+    },
+    "step": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner"],
+          "properties": {
+            "runner": { "const": "gitStatus" },
+            "cwd": { "type": "string", "minLength": 1 },
+            "continueOnError": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner", "cwd"],
+          "properties": {
+            "runner": { "const": "workspaceShell" },
+            "cwd": { "type": "string", "minLength": 1 },
+            "continueOnError": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner", "module"],
+          "properties": {
+            "runner": { "const": "pythonModule" },
+            "module": { "enum": ["unittest", "pytest", "uvicorn"] },
+            "arguments": { "$ref": "#/$defs/arguments" },
+            "cwd": { "type": "string", "minLength": 1 },
+            "continueOnError": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner", "manager", "script"],
+          "properties": {
+            "runner": { "const": "packageScript" },
+            "manager": { "enum": ["npm", "pnpm", "yarn", "bun"] },
+            "script": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]{0,63}$"
+            },
+            "arguments": { "$ref": "#/$defs/arguments" },
+            "cwd": { "type": "string", "minLength": 1 },
+            "continueOnError": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner", "name"],
+          "properties": {
+            "runner": { "const": "packageBinary" },
+            "name": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+            },
+            "arguments": { "$ref": "#/$defs/arguments" },
+            "cwd": { "type": "string", "minLength": 1 },
+            "continueOnError": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner", "path"],
+          "properties": {
+            "runner": { "const": "powershellFile" },
+            "path": { "type": "string", "minLength": 1 },
+            "arguments": { "$ref": "#/$defs/arguments" },
+            "cwd": { "type": "string", "minLength": 1 },
+            "continueOnError": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner", "name"],
+          "properties": {
+            "runner": { "const": "installedTool" },
+            "name": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+            },
+            "arguments": { "$ref": "#/$defs/arguments" },
+            "cwd": { "type": "string", "minLength": 1 },
+            "continueOnError": { "type": "boolean" },
+            "preferred": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["base", "path"],
+              "properties": {
+                "base": { "const": "LocalAppData" },
+                "path": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner", "verb"],
+          "properties": {
+            "runner": { "const": "dotnet" },
+            "verb": { "enum": ["build", "test", "run"] },
+            "arguments": { "$ref": "#/$defs/arguments" },
+            "cwd": { "type": "string", "minLength": 1 },
+            "continueOnError": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner", "verb"],
+          "properties": {
+            "runner": { "const": "cargo" },
+            "verb": { "enum": ["build", "check", "test", "run"] },
+            "arguments": { "$ref": "#/$defs/arguments" },
+            "cwd": { "type": "string", "minLength": 1 },
+            "continueOnError": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner", "verb"],
+          "properties": {
+            "runner": { "const": "go" },
+            "verb": { "enum": ["test", "vet", "run"] },
+            "arguments": { "$ref": "#/$defs/arguments" },
+            "cwd": { "type": "string", "minLength": 1 },
+            "continueOnError": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner"],
+          "properties": {
+            "runner": { "const": "openRepository" },
+            "continueOnError": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runner", "text"],
+          "properties": {
+            "runner": { "const": "message" },
+            "text": { "type": "string", "maxLength": 1024 },
+            "continueOnError": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "tabTitle",
+        "icon",
+        "steps"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "tabTitle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "icon": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "environment": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 512,
+            "pattern": "^[^\\u0000-\\u0008\\u000A-\\u001F\\u007F]*$"
+          }
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        }
+      }
+    },
+    "pane": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["task", "action"],
+          "properties": {
+            "task": { "$ref": "#/$defs/id" },
+            "action": { "const": "newTab" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["task", "action", "split", "size"],
+          "properties": {
+            "task": { "$ref": "#/$defs/id" },
+            "action": { "const": "splitPane" },
+            "split": { "enum": ["right", "down"] },
+            "size": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 0.9
+            }
+          }
+        }
+      ]
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "displayName",
+        "root",
+        "stack",
+        "trusted",
+        "presentation",
+        "tasks",
+        "palette",
+        "workspace"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "root": {
+          "type": "string",
+          "minLength": 3
+        },
+        "stack": {
+          "enum": [
+            "pwa",
+            "compose",
+            "node",
+            "python",
+            "dotnet",
+            "rust",
+            "go",
+            "generic"
+          ]
+        },
+        "repository": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "gitTrusted": {
+          "type": "boolean"
+        },
+        "requirements": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "commands": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+              }
+            }
+          }
+        },
+        "manifest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "importedAt"
+          ],
+          "properties": {
+            "path": {
+              "const": ".el-project.json"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "importedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "trusted": {
+          "const": true
+        },
+        "presentation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "accent",
+            "icon"
+          ],
+          "properties": {
+            "accent": {
+              "enum": [
+                "Black",
+                "DarkBlue",
+                "DarkGreen",
+                "DarkCyan",
+                "DarkRed",
+                "DarkMagenta",
+                "DarkYellow",
+                "Gray",
+                "DarkGray",
+                "Blue",
+                "Green",
+                "Cyan",
+                "Red",
+                "Magenta",
+                "Yellow",
+                "White"
+              ]
+            },
+            "icon": {
+              "type": "string",
+              "maxLength": 8
+            }
+          }
+        },
+        "tasks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/task"
+          }
+        },
+        "palette": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "workspace": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/pane"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "el-api-fixture",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "fastify": "5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "7.0.0"
+  }
+}

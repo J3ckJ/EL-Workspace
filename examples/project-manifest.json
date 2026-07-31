@@ -1,0 +1,54 @@
+{
+  "$schema": "https://raw.githubusercontent.com/J3ckJ/EL-Workspace/v0.1.0/src/Terminal/el-project.schema.json",
+  "schemaVersion": 1,
+  "displayName": "My Web App",
+  "stack": "node",
+  "presentation": {
+    "accent": "Cyan",
+    "icon": "◫"
+  },
+  "requirements": {
+    "commands": [
+      "node",
+      "npm"
+    ]
+  },
+  "tasks": {
+    "dev": {
+      "label": "Dev server",
+      "tabTitle": "My Web App · Dev",
+      "icon": "▶",
+      "steps": [
+        {
+          "runner": "packageScript",
+          "manager": "npm",
+          "script": "dev",
+          "arguments": []
+        }
+      ]
+    },
+    "tests": {
+      "label": "Tests",
+      "tabTitle": "My Web App · Tests",
+      "icon": "✓",
+      "steps": [
+        {
+          "runner": "packageScript",
+          "manager": "npm",
+          "script": "test",
+          "arguments": []
+        }
+      ]
+    }
+  },
+  "palette": [
+    "dev",
+    "tests"
+  ],
+  "workspace": [
+    {
+      "task": "main",
+      "action": "newTab"
+    }
+  ]
+}

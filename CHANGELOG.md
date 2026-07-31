@@ -1,0 +1,48 @@
+# История изменений
+
+Проект придерживается [Semantic Versioning](https://semver.org/lang/ru/) и
+формата [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/).
+
+## [Unreleased]
+
+### Изменено
+
+- Раздел зарезервирован для изменений следующего релиза.
+
+## [0.1.0] — 2026-07-31
+
+### Добавлено
+
+- транзакционная установка EL Workspace для текущего пользователя из GitHub
+  Release с backup и автоматическим rollback;
+- release-архив и checksum manifest SHA-256 с проверкой путей ZIP до
+  распаковки;
+- сохранение реестра проектов и состояния launcher при обновлении;
+- структурное объединение темы с существующими настройками Windows Terminal;
+- необязательная user-space установка zoxide, fzf, Oh My Posh и Nerd Font;
+- launcher `el` и менеджер проектов `el-project`;
+- безопасное распознавание PWA, Docker Compose, Node.js, Python, .NET, Rust,
+  Go и generic-проектов;
+- подтверждаемый `.el-project.json` с локальным snapshot задач;
+- рабочие пространства и палитра команд Windows Terminal;
+- контекстные заголовки, цвета вкладок и индикатор выполнения задач;
+- быстрый выбор проектов `elj`, интеграции `zoxide` и `fzf`;
+- короткие команды `app`, `clean`, `site`, `serve`, `g`, `publish` и
+  `update-tools`;
+- команды `doctor`, `update`, `backup`, `restore` и безопасное удаление;
+- изолированные smoke-тесты установки и сборка release-артефактов с SHA-256.
+
+### Безопасность
+
+- project manifest не исполняется как произвольная командная строка;
+- пути задач ограничены каталогом проекта, а опасные автоматические задачи
+  исключены;
+- профиль PowerShell изменяется только внутри маркированного блока;
+- повреждённый либо неоднозначный managed profile block отклоняется;
+- восстановление проверяет inventory и SHA-256 каждого файла;
+- install, backup, restore и uninstall отказываются работать через reparse
+  components;
+- удаление ограничено каталогами EL Workspace и требует подтверждения.
+
+[Unreleased]: https://github.com/J3ckJ/EL-Workspace/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/J3ckJ/EL-Workspace/releases/tag/v0.1.0

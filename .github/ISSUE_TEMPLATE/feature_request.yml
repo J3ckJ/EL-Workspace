@@ -1,0 +1,34 @@
+name: Предложение
+description: Идея или улучшение EL Workspace
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую проблему нужно решить?
+      description: Опишите рабочий сценарий, а не только желаемую реализацию.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Предлагаемое поведение
+      description: Покажите ожидаемые команды или интерфейс, если это уместно.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Рассмотренные альтернативы
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Влияние
+      options:
+        - label: Предложение не требует скрытого запуска проектного кода или повышения прав.
+          required: true

@@ -1,0 +1,9 @@
+{
+  "name": "el-pwa-fixture",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "test:api": "npm --prefix backend test",
+    "test:community-load": "node --test"
+  }
+}
