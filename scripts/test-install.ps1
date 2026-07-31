@@ -351,9 +351,52 @@ try {
     [void] [IO.Directory]::CreateDirectory($installRoot)
     $projectsSource = Join-Path $repositoryRoot 'defaults\projects.json'
     $stateSource = Join-Path $repositoryRoot 'defaults\launcher-state.json'
+    $filesystemDrives = @(Get-PSDrive -PSProvider FileSystem).Name
+    $offlineDrive = @(90..68 | ForEach-Object { [char] $_ } | Where-Object {
+        "$_" -notin $filesystemDrives
+    } | Select-Object -First 1)
+    Assert-Equal `
+        -Actual $offlineDrive.Count `
+        -Expected 1 `
+        -Message 'an unavailable drive is required for the offline project test'
+    $offlineRoot = (
+        "$($offlineDrive[0]):\EL-Workspace-offline-" +
+        [Guid]::NewGuid().ToString('N')
+    )
+    $projectsFixture = Get-Content `
+        -LiteralPath $projectsSource `
+        -Raw `
+        -Encoding UTF8 | ConvertFrom-Json -Depth 100
+    $projectsFixture.projects = @([pscustomobject][ordered]@{
+        id = 'offline-project'
+        displayName = 'Offline project'
+        root = $offlineRoot
+        stack = 'generic'
+        repository = $null
+        trusted = $true
+        presentation = [ordered]@{
+            accent = 'DarkGray'
+            icon = '◇'
+        }
+        tasks = @([pscustomobject][ordered]@{
+            id = 'main'
+            label = 'Offline console'
+            tabTitle = 'Offline project · Main'
+            icon = '◇'
+            steps = @([pscustomobject][ordered]@{
+                runner = 'workspaceShell'
+                cwd = '.'
+            })
+        })
+        palette = @('main')
+        workspace = @([pscustomobject][ordered]@{
+            task = 'main'
+            action = 'newTab'
+        })
+    })
     Write-Utf8 `
         -Path (Join-Path $installRoot 'projects.json') `
-        -Content ((Get-Content $projectsSource -Raw -Encoding UTF8).TrimEnd() + "`r`n `r`n")
+        -Content (($projectsFixture | ConvertTo-Json -Depth 100) + "`r`n `r`n")
     Write-Utf8 `
         -Path (Join-Path $installRoot 'launcher-state.json') `
         -Content ((Get-Content $stateSource -Raw -Encoding UTF8).TrimEnd() + "`r`n `r`n")
@@ -365,6 +408,21 @@ try {
         -Algorithm SHA256).Hash
     Invoke-TestInstall -Source $repositoryRoot
     Assert-InstalledState -ProjectsHash $projectsHash -StateHash $stateHash
+    $installedFragment = Get-Content `
+        -LiteralPath $fragmentPath `
+        -Raw `
+        -Encoding UTF8 | ConvertFrom-Json -Depth 100
+    $offlineGroup = @($installedFragment.actions | Where-Object {
+        $_.id -eq 'User.EL.Project.offline-project'
+    })
+    Assert-Equal `
+        -Actual $offlineGroup.Count `
+        -Expected 1 `
+        -Message 'offline project must remain in the Terminal fragment'
+    Assert-Equal `
+        -Actual $offlineGroup[0].commands[0].command.actions[0].startingDirectory `
+        -Expected $offlineRoot `
+        -Message 'offline project root must be preserved lexically'
 
     Write-Host 'TEST 3/10 · idempotent ZIP update with SHA-256'
     Invoke-TestInstall `

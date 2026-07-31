@@ -16,7 +16,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$script:Version = '0.1.1'
+$script:Version = '0.1.2'
 $script:Repository = 'J3ckJ/EL-Workspace'
 $script:ArchiveName = "EL-Workspace-$($script:Version).zip"
 $script:ArchiveRootName = "EL-Workspace-$($script:Version)"

@@ -9,6 +9,16 @@
 
 - Раздел зарезервирован для изменений следующего релиза.
 
+## [0.1.2] — 2026-07-31
+
+### Исправлено
+
+- установка и `el-project sync` больше не требуют, чтобы каждый сохранённый
+  диск проекта был подключён прямо сейчас; офлайн-проект остаётся в реестре и
+  Terminal fragment, а доступность проверяется при открытии/диагностике;
+- lifecycle test включает проект на отсутствующем диске и проверяет сохранение
+  его `startingDirectory` без обращения к PowerShell drive provider.
+
 ## [0.1.1] — 2026-07-31
 
 ### Исправлено
@@ -54,6 +64,7 @@
   components;
 - удаление ограничено каталогами EL Workspace и требует подтверждения.
 
-[Unreleased]: https://github.com/J3ckJ/EL-Workspace/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/J3ckJ/EL-Workspace/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/J3ckJ/EL-Workspace/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/J3ckJ/EL-Workspace/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/J3ckJ/EL-Workspace/releases/tag/v0.1.0
