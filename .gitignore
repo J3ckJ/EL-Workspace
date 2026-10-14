@@ -50,3 +50,7 @@ Desktop.ini
 # Package managers
 node_modules/
 packages/
+
+# Local git host build and runtime data
+/server/bin/
+/server/data/

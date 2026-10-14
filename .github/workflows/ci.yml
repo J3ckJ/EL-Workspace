@@ -55,3 +55,21 @@ jobs:
       - name: Test isolated installation lifecycle
         shell: pwsh
         run: pwsh -NoProfile -File .\scripts\test-install.ps1
+
+  validate-server:
+    name: Local git host
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Test git host
+        working-directory: server
+        run: go test ./...
