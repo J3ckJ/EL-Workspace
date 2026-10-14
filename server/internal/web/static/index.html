@@ -6,6 +6,15 @@
   <title>EL Workspace</title>
   <link rel="icon" href="/favicon.svg">
   <link rel="stylesheet" href="/app.css">
+  <script>
+    (function () {
+      var query = new URLSearchParams(location.search).get("theme");
+      var saved = "";
+      try { saved = localStorage.getItem("el-theme") || ""; } catch (e) { saved = ""; }
+      var theme = query || saved || "dark";
+      document.documentElement.dataset.theme = theme === "light" ? "light" : "dark";
+    })();
+  </script>
 </head>
 <body>
   <div id="app"></div>

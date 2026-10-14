@@ -131,6 +131,7 @@ func (s *Service) PullView(owner, name string, number int) (map[string]any, erro
 		"pull": p, "files": files, "comments": comments,
 		"mergeable": mergeable, "linear": linear, "ci": ciStatus,
 		"unresolved": unresolved, "headSha": headSHA,
+		"mirrorMode": repo.MirrorMode, "mirrorUrl": repo.MirrorURL,
 	}, nil
 }
 

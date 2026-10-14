@@ -84,8 +84,36 @@ export function icon(name) {
 }
 
 export function statusDot(status) {
-  const map = { failed: "bad", offline: "bad", ahead: "warn", local: "idle", synced: "ok", success: "ok", failure: "bad" };
+  const map = { failed: "bad", failure: "bad", conflict: "bad", offline: "warn", ahead: "warn", local: "idle", synced: "ok", success: "ok" };
   return `<i class="dot ${map[status] || "idle"}"></i>`;
+}
+
+export function queueDots(jobs) {
+  return (jobs || []).map((_, index) => `<i style="animation-delay:${index * 200}ms"></i>`).join("");
+}
+
+let toastTimer = 0;
+export function toast(text, tone = "", hold = 2800) {
+  document.querySelector(".toast")?.remove();
+  const node = document.createElement("div");
+  node.className = `toast ${tone}`.trim();
+  node.textContent = text;
+  document.body.appendChild(node);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    node.classList.add("out");
+    setTimeout(() => node.remove(), 220);
+  }, hold);
+}
+
+export function themeName() {
+  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+}
+
+export function setTheme(theme) {
+  const next = theme === "light" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("el-theme", next); } catch { /* private mode */ }
 }
 
 export function modeLabel(mode) {

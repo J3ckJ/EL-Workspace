@@ -433,7 +433,7 @@ func (s *Service) DrainMirrors() {
 		}
 		if err := s.pushMirror(repo, job.Ref, job.Force); err != nil {
 			_ = s.Store.FinishMirrorJob(job.ID, "error", err.Error())
-			repo.MirrorStatus = "offline"
+			repo.MirrorStatus = MirrorLink(err.Error())
 			repo.MirrorDetail = err.Error()
 			_ = s.Store.UpdateRepo(repo)
 			continue
@@ -514,6 +514,9 @@ func (s *Service) MirrorPush(owner, name, ref string, force, confirm bool, ackno
 			return err
 		}
 		if err := s.pushMirror(repo, ref, false); err != nil {
+			repo.MirrorStatus = MirrorLink(err.Error())
+			repo.MirrorDetail = err.Error()
+			_ = s.Store.UpdateRepo(repo)
 			return bad(http.StatusConflict, err.Error())
 		}
 		repo.MirrorStatus = "synced"

@@ -29,6 +29,7 @@ func (s *Server) Handler(git http.Handler) http.Handler {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	})
 	mux.HandleFunc("GET /api/dashboard", s.dashboard)
+	mux.HandleFunc("GET /api/sync", s.sync)
 	mux.HandleFunc("GET /api/panel", s.panel)
 	mux.HandleFunc("GET /api/search", s.search)
 	mux.HandleFunc("GET /api/meta", s.meta)
@@ -81,6 +82,11 @@ func (s *Server) Handler(git http.Handler) http.Handler {
 
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 	out, err := s.Svc.Dashboard()
+	respond(w, out, err)
+}
+
+func (s *Server) sync(w http.ResponseWriter, r *http.Request) {
+	out, err := s.Svc.Link()
 	respond(w, out, err)
 }
 

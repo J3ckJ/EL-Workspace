@@ -1,4 +1,4 @@
-import { ago, api, copy, dayLabels, esc, get, greeting, icon, modeLabel, post, short, statusDot } from "./util.js";
+import { ago, api, copy, dayLabels, esc, get, greeting, icon, modeLabel, post, queueDots, short, statusDot, toast } from "./util.js";
 
 export async function render(root, route, openPalette) {
   const [head, owner, name, section, extra] = route.parts;
@@ -32,10 +32,20 @@ async function dashboard(root, openPalette) {
   const data = await get("/api/dashboard");
   const labels = dayLabels();
   const attention = data.attention;
-  root.innerHTML = `
-    ${pageHead(esc(greeting(data.name)), `${data.repoCount} репозиториев на ${esc(data.host)} · ${data.mirrored} в зеркале · ${data.localOnly} только локально`, `
+  const head = pageHead(esc(greeting(data.name)), data.repoCount ? `${data.repoCount} репозиториев на ${esc(data.host)} · ${data.mirrored} в зеркале · ${data.localOnly} только локально` : "Локальный хост готов", `
       <button class="search" id="find" type="button"><span>Поиск по коду, коммитам, задачам…</span><kbd>⌘K</kbd></button>
-      <button class="btn" id="new-repo" type="button">+ Новый репозиторий</button>`)}
+      <button class="btn" id="new-repo" type="button">+ Новый репозиторий</button>`);
+  if (!data.repoCount) {
+    root.innerHTML = head + `<section class="card empty-state"><h2>Пока ни одного репозитория</h2><p class="muted">Он останется на этой машине. Зеркало можно подключить позже.</p><button class="btn" id="empty-new" type="button">+ Новый репозиторий</button></section>`;
+    root.querySelector("#find").addEventListener("click", openPalette);
+    root.querySelector("#new-repo").addEventListener("click", () => createRepo());
+    root.querySelector("#empty-new").addEventListener("click", () => createRepo());
+    return;
+  }
+  const link = data.link || {};
+  root.innerHTML = `
+    ${head}
+    ${linkBanner(link)}
     <div class="grid-2">
       <section class="card ${attention?.tone === "danger" ? "danger" : ""} attention">
         ${attention ? `<div class="kicker ${attention.tone === "danger" ? "bad" : ""}">${esc(attention.kicker)} · ${esc(ago(attention.at))}</div>
@@ -48,7 +58,7 @@ async function dashboard(root, openPalette) {
       </section>
       <section class="card">
         <div class="kicker">Ветки за неделю</div>
-        ${(data.week || []).slice(0, 5).map((repo) => weekRow(repo)).join("")}
+        ${weekChart(data.week)}
         <div class="days">${labels.map((label) => `<span>${esc(label)}</span>`).join("")}</div>
       </section>
     </div>
@@ -72,20 +82,40 @@ async function dashboard(root, openPalette) {
   });
 }
 
+function linkBanner(link) {
+  if (link.conflict) {
+    return `<div class="banner bad"><b>Зеркало разошлось с домашней копией</b><div class="muted">${link.conflict} репозиториев ждут решения. Force-push показывает, какие коммиты будут потеряны.</div></div>`;
+  }
+  if (link.phase === "offline" || link.queue) {
+    return `<div class="banner"><b>Работаем дома. Зеркало подождёт</b><div class="muted">В очереди ${link.queue || 0}.</div><div class="q">${queueDots(link.jobs)}</div></div>`;
+  }
+  return "";
+}
+
+function weekChart(week) {
+  const series = (week || []).slice(0, 5);
+  const width = 320;
+  const height = 120;
+  const max = Math.max(1, ...series.flatMap((repo) => repo.days || [0]));
+  const marks = series.map((repo, index) => {
+    const days = repo.days || [];
+    const points = days.map((count, day) => {
+      const x = days.length <= 1 ? 0 : (day / (days.length - 1)) * width;
+      const y = height - 10 - (count / max) * (height - 24);
+      return [x, y];
+    });
+    const path = points.map((point, i) => `${i ? "L" : "M"}${point[0].toFixed(1)},${point[1].toFixed(1)}`).join(" ");
+    const dots = points.map((point) => `<circle class="s${index}" cx="${point[0].toFixed(1)}" cy="${point[1].toFixed(1)}" r="3.2"></circle>`).join("");
+    return `<path class="s${index}" d="${path}"></path>${dots}`;
+  }).join("");
+  const legend = series.map((repo, index) => `<span><i class="dot s${index}"></i> ${esc(repo.name)}</span>`).join("");
+  return `<svg class="week-chart" viewBox="0 0 ${width} ${height}" role="img">${marks}</svg><div class="legend">${legend}</div>`;
+}
+
 function attentionHref(item) {
   if (item.kind === "ci") return `#/r/${item.owner}/${item.name}/ci/${item.id}`;
   if (item.kind === "pr") return `#/r/${item.owner}/${item.name}/pull/${item.number}`;
   return `#/r/${item.owner}/${item.name}`;
-}
-
-function weekRow(repo) {
-  const days = repo.days || [];
-  const dots = days.map((count, index) => {
-    if (!count) return "";
-    const tone = index === days.length - 1 && count > 2 ? "warn" : "ok";
-    return `<i class="${tone}" style="left:${(index / 6) * 100}%"></i>`;
-  }).join("");
-  return `<div class="week-row"><div><b>${esc(repo.name)}</b><em>${esc(repo.branch || "")}</em></div><div class="track">${dots}</div></div>`;
 }
 
 function repoCard(repo) {
@@ -100,10 +130,16 @@ function repoCard(repo) {
 
 function statusLine(repo) {
   if (repo.status === "failed") return "сборка упала";
+  if (repo.status === "conflict" || repo.mirrorStatus === "conflict") return "зеркало разошлось";
   if (repo.status === "ahead" || repo.mirrorStatus === "ahead") return "есть неотправленное";
   if (repo.status === "offline") return "зеркало недоступно";
   if (repo.status === "local" || repo.mirrorMode === "local") return "только локально";
   return "синхр. с GitHub";
+}
+
+function summaryMirrorHint(data) {
+  if (!data.mirrorUrl || !data.mirrorMode || data.mirrorMode === "local") return "";
+  return `<div class="tiny">После слияния основная ветка встанет в очередь зеркала.</div>`;
 }
 
 function brief(text) {
@@ -179,12 +215,15 @@ function cloneDialog(summary) {
 }
 
 async function code(root, summary, owner, name, ref, dir) {
-  const [tree, readme] = await Promise.all([
+  const [tree, readme, commits] = await Promise.all([
     get(`/api/repos/${owner}/${name}/tree?ref=${encodeURIComponent(ref)}&path=${encodeURIComponent(dir)}`),
     dir ? Promise.resolve(null) : get(`/api/repos/${owner}/${name}/readme?ref=${encodeURIComponent(ref)}`),
+    dir ? Promise.resolve([]) : get(`/api/repos/${owner}/${name}/commits?ref=${encodeURIComponent(ref)}&limit=6`),
   ]);
   const refsData = await get(`/api/repos/${owner}/${name}/refs`);
+  const history = (commits || []).map((item) => `<a href="#/r/${owner}/${name}/commit/${esc(item.sha)}">${statusDot("synced")}<span class="mono">${esc(item.short)}</span><span class="tiny">${esc(item.subject)}</span></a>`).join("");
   root.innerHTML = `<div class="layout"><div class="card">
+      ${history ? `<div class="history">${history}</div>` : ""}
       <div class="row"><select class="field" id="ref" style="max-width:240px">${(refsData.branches || []).map((branch) => `<option ${branch.name === ref ? "selected" : ""}>${esc(branch.name)}</option>`).join("")}${(refsData.tags || []).map((tag) => `<option ${tag.name === ref ? "selected" : ""}>${esc(tag.name)}</option>`).join("")}</select>
       <span class="muted grow">${dir ? esc(dir) : "корень"}</span></div>
       ${tree.empty ? `<div class="empty">Репозиторий пуст. Первый push создаст main.</div><div class="clone">${esc(summary.clone)}</div>` : (tree.entries || []).map((entry) => `<button class="file-row" data-type="${esc(entry.type)}" data-path="${esc(entry.path)}" type="button">${icon(entry.type === "tree" ? "folder" : "file")} <span class="grow">${esc(entry.name)}</span></button>`).join("")}
@@ -331,15 +370,16 @@ async function pull(root, owner, name, number) {
   root.innerHTML = `
     <div class="tiny">${esc(owner)} / ${esc(name)} / PR #${esc(number)}</div>
     <div class="top"><div><h1>${esc(item.title)} <span class="pill ${item.status === "open" ? "ok" : ""}">${esc(item.status)}</span></h1>
-      <div class="sub">${esc(item.head)} → ${esc(item.base)} · ${data.mergeable ? "конфликтов нет" : "есть конфликты"} · ${data.linear ? "линейная история возможна" : "нужен merge-коммит"}</div></div></div>
+      <div class="sub">${esc(item.head)} → ${esc(item.base)} · ${data.mergeable ? "конфликтов нет" : "слияние конфликтует"} · ${data.linear ? "линейная история возможна" : "нужен merge-коммит"}</div></div></div>
+    ${data.mergeable ? "" : `<div class="banner bad">Ветки разошлись. Слияние остановится, пока конфликт не разрешён в рабочей копии.</div>`}
     <div class="layout"><div>
       <div class="row" style="margin-bottom:8px"><span class="muted">${data.files.length} файлов</span><button class="btn ghost small" id="mode" type="button">Раздельно</button></div>
       <div id="files"></div>
       <div class="helpbar"><span>J / K файлы</span><span>двойной клик — комментарий</span></div>
     </div>
     <aside>
-      <div class="card"><div class="tiny">РЕВЬЮ</div><div>${data.unresolved ? `${data.unresolved} незакрытых` : "замечаний нет"}</div><div class="tiny">Сборка ${esc(data.ci || "—")}</div></div>
-      ${item.status === "open" ? `<div class="card" style="margin-top:12px"><div class="chips" id="methods"><button class="chip" data-method="squash">squash</button><button class="chip" data-method="rebase">rebase</button><button class="chip on" data-method="merge">merge-коммит</button></div><button class="btn green" id="merge" type="button" style="width:100%;margin-top:10px">Слить в ${esc(item.base)}</button><div class="tiny">$ el pr checkout ${esc(number)}</div></div>` : `<div class="card" style="margin-top:12px">Слито ${esc(short(item.mergeSha))}</div>`}
+      <div class="card"><div class="tiny">РЕВЬЮ</div><div class="review-count" id="review-count">${data.unresolved ? `${data.unresolved} незакрытых` : "замечаний нет"}</div><div class="tiny">Сборка ${esc(data.ci || "—")}</div></div>
+      ${item.status === "open" ? `<div class="card" style="margin-top:12px"><div class="chips" id="methods"><button class="chip" data-method="squash">squash</button><button class="chip" data-method="rebase">rebase</button><button class="chip on" data-method="merge">merge-коммит</button></div><button class="btn green" id="merge" type="button" style="width:100%;margin-top:10px" ${data.mergeable ? "" : "disabled"}>Слить в ${esc(item.base)}</button>${summaryMirrorHint(data)}<div class="tiny">$ el pr checkout ${esc(number)}</div></div>` : `<div class="card" style="margin-top:12px">Слито ${esc(short(item.mergeSha))}</div>`}
     </aside></div>`;
   const holder = root.querySelector("#files");
   let split = false;
@@ -352,18 +392,45 @@ async function pull(root, owner, name, number) {
     method = chip.dataset.method;
     root.querySelectorAll(".chip").forEach((item) => item.classList.toggle("on", item === chip));
   }));
-  root.querySelector("#merge")?.addEventListener("click", async () => {
-    await post(`/api/repos/${owner}/${name}/pulls/${number}/merge`, { method });
-    location.reload();
+  root.querySelector("#merge")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.innerHTML = `<i class="spin"></i> Слияние`;
+    try {
+      await post(`/api/repos/${owner}/${name}/pulls/${number}/merge`, { method });
+      const mirrored = data.mirrorUrl && data.mirrorMode && data.mirrorMode !== "local";
+      toast(mirrored ? `${item.base} встал в очередь зеркала` : `Слито в ${item.base}`, "ok", 1500);
+      location.reload();
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = `Слить в ${item.base}`;
+      toast(error.message, "bad", 4000);
+    }
   });
   root.querySelectorAll(".comment-box").forEach((box) => {
     const id = (data.comments || []).find((comment) => box.textContent.includes(comment.body))?.id;
     if (!id || item.status !== "open") return;
+    if ((data.comments || []).find((comment) => comment.id === id)?.resolved) {
+      box.remove();
+      return;
+    }
     const bar = document.createElement("div");
     bar.className = "composer";
-    bar.innerHTML = `<button class="btn ghost small" type="button">Решено</button>` + ((data.comments || []).find((comment) => comment.id === id)?.suggestion ? `<button class="btn small" type="button" data-apply="${id}">Применить правку</button>` : "");
+    bar.innerHTML = `<button class="btn ghost small" type="button" data-resolve="${id}">Решено</button>` + ((data.comments || []).find((comment) => comment.id === id)?.suggestion ? `<button class="btn small" type="button" data-apply="${id}">Применить правку</button>` : "");
     box.append(bar);
   });
+  root.querySelectorAll("[data-resolve]").forEach((button) => button.addEventListener("click", async () => {
+    const box = button.closest(".comment-box");
+    box?.classList.add("resolved");
+    const counter = root.querySelector("#review-count");
+    if (counter) {
+      const current = Number.parseInt(counter.textContent, 10);
+      counter.textContent = current > 1 ? `${current - 1} незакрытых` : "замечаний нет";
+      counter.classList.add("flash");
+    }
+    await new Promise((resolve) => setTimeout(resolve, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 120 : 420));
+    await post(`/api/comments/${button.dataset.resolve}/resolve`, {});
+  }));
   root.querySelectorAll("[data-apply]").forEach((button) => button.addEventListener("click", async () => {
     await post(`/api/comments/${button.dataset.apply}/apply`, {});
     location.reload();
@@ -375,7 +442,8 @@ async function board(root, owner, name) {
   const issues = await get(owner ? `/api/repos/${owner}/${name}/issues` : "/api/issues");
   const columns = [["backlog", "Бэклог"], ["progress", "В работе"], ["review", "На ревью"], ["done", "Готово"]];
   const head = owner ? "" : pageHead("Задачи", "Доска по всем репозиториям", `<button class="btn" id="add" type="button">+ Задача</button>`);
-  root.innerHTML = head + `<div class="row" style="margin-bottom:12px"><input class="field" id="q" placeholder="is:open label:дизайн" style="max-width:360px"></div>
+  const empty = issues.length ? "" : `<section class="card empty-state"><h2>Задач пока нет</h2><p class="muted">Карточка появится здесь и уедет в «Готово», когда коммит с номером задачи сольётся в основную ветку.</p></section>`;
+  root.innerHTML = head + empty + `<div class="row" style="margin-bottom:12px"><input class="field" id="q" placeholder="is:open label:дизайн" style="max-width:360px"></div>
     <div class="kanban">${columns.map(([id, label]) => `<section class="card column" data-status="${id}"><b>${label}</b> <span class="tiny">${issues.filter((item) => item.status === id).length}</span>${issues.filter((item) => item.status === id).map(issueCard).join("")}</section>`).join("")}</div>
     <div class="tiny" style="margin-top:12px">Закрывается из коммита: fix: сокеты #12 — задача переезжает в «Готово» после слияния в main.</div>`;
   root.querySelector("#q")?.addEventListener("change", async (event) => {
@@ -440,7 +508,14 @@ async function ciRun(root, owner, name, id) {
   const show = (text) => { log.innerHTML = esc(text).replace(/error.*/gi, (line) => `<span class="err">${line}</span>`); };
   show(jobs[0]?.log || run.log || "");
   root.querySelectorAll(".job").forEach((job) => job.addEventListener("click", () => show(jobs[job.dataset.job].log)));
-  root.querySelector("#rerun").onclick = async () => { await post(`/api/repos/${owner}/${name}/ci`, { ref: run.ref }); location.hash = `#/r/${owner}/${name}/ci`; };
+  root.querySelector("#rerun").onclick = async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.innerHTML = `<i class="spin"></i> Запуск`;
+    toast("Сборка идёт", "amb", 4000);
+    await post(`/api/repos/${owner}/${name}/ci`, { ref: run.ref });
+    location.hash = `#/r/${owner}/${name}/ci`;
+  };
 }
 
 async function releaseList(root, owner, name) {
@@ -455,7 +530,7 @@ async function releaseList(root, owner, name) {
     ${owner ? "" : pageHead("Релизы", "Заметки из CHANGELOG и коммитов с прошлого тега")}
     <div class="layout">
       <div class="card">${current ? `<div class="kicker ok">${esc(current.name)} · ${current.published ? "опубликован" : "локальный"}</div><h1>${esc(current.tag)}</h1><div class="md" style="white-space:pre-wrap">${esc(current.notes)}</div>
-        ${(current.assets || []).map((asset) => `<div class="commit-row"><span class="grow">${esc(asset.name)}</span><a href="/api/assets/${asset.id}">SHA-256 ${esc(asset.sha256.slice(0, 12))}</a></div>`).join("")}` : `<div class="empty">Релизов нет</div>`}
+        ${(current.assets || []).map((asset) => `<div class="commit-row"><span class="grow">${esc(asset.name)}</span><a href="/api/assets/${asset.id}">SHA-256 ${esc(asset.sha256.slice(0, 12))}</a></div>`).join("")}` : `<div class="empty-state"><h2>Релизов нет</h2><p class="muted">Заметки соберутся из CHANGELOG и коммитов с прошлого тега.</p></div>`}
         <div style="margin-top:8px">${groups.slice(1).map((item) => `<a class="commit-row" href="#/r/${item.owner}/${item.name}/releases"><span class="mono">${esc(item.tag)}</span><span>${esc(item.name)}</span></a>`).join("")}</div>
       </div>
       <form class="card" id="rel"><h2>Новый релиз</h2><div class="tiny">Заметки соберутся сами, если оставить поле пустым.</div>
@@ -495,8 +570,12 @@ async function settings(root, tab) {
 }
 
 async function mirrorsView(root, repos) {
-  root.innerHTML = `<div class="grid-2"><div class="card"><div class="tiny">Дом и GitHub</div><h2>GitHub — зеркало, не источник правды</h2><p class="muted">Push уходит при слиянии в основную ветку. Если сети нет, задание остаётся в очереди. Force-push показывает коммиты, которые будут потеряны, и ждёт подтверждения.</p></div>
-    <div class="card"><div class="kicker ok">Состояние зеркал</div><div class="tiny">Очередь обрабатывается на этой машине.</div></div></div>
+  const conflict = repos.filter((repo) => repo.mirrorStatus === "conflict");
+  const offline = repos.filter((repo) => repo.mirrorStatus === "offline");
+  const scene = conflict.length ? "conflict" : offline.length ? "offline" : "synced";
+  const title = scene === "conflict" ? "Зеркало ушло вперёд" : scene === "offline" ? "Изменения ждут в очереди" : "Дом и GitHub в одном состоянии";
+  root.innerHTML = `<div class="grid-2"><div class="card" data-sync-scene data-state="${scene}"><div class="sync-scene">${syncArt(scene)}<div class="node" style="left:8%;top:48px">${disk()}<b>Дом</b></div><div class="node" style="right:8%;top:36px">${cloud()}<b>Зеркало</b></div></div><div class="q"></div></div>
+    <div class="card"><div class="kicker ${scene === "conflict" ? "bad" : scene === "offline" ? "" : "ok"}">${esc(title)}</div><p class="muted" data-sync-counts></p><p class="muted">${scene === "conflict" ? "Обычный push не перепишет чужие коммиты. Список потерянных коммитов показывается до подтверждения." : "Push уходит при слиянии в основную ветку. Если сети нет, задание остаётся в очереди."}</p></div></div>
     <div class="card" style="margin-top:12px"><table><thead><tr><th>Репозиторий</th><th>Зеркало</th><th>Режим</th><th>Состояние</th></tr></thead><tbody>
       ${repos.map((repo) => `<tr><td><a href="#/r/${esc(repo.owner)}/${esc(repo.name)}">${esc(repo.name)}</a></td><td class="mono">${esc(repo.mirrorUrl || "—")}</td><td><select data-repo="${esc(repo.owner)}/${esc(repo.name)}" class="field">${["local", "push", "both"].map((mode) => `<option value="${mode}" ${repo.mirrorMode === mode ? "selected" : ""}>${esc(modeLabel(mode))}</option>`).join("")}</select></td><td>${statusDot(repo.mirrorStatus || repo.mirrorMode)} ${esc(repo.mirrorDetail || repo.mirrorStatus || "")}</td></tr>`).join("")}
     </tbody></table></div>
@@ -576,12 +655,20 @@ function tokenView(root, settingsData) {
 
 async function architecture(root) {
   const meta = await get("/api/meta");
-  root.innerHTML = `<div class="top"><div><h1>EL Workspace — как устроено</h1><div class="sub">Всё живёт дома. GitHub — только зеркало, а не источник правды.</div></div><span class="pill ok">GitHub по желанию</span></div>
-    <div class="arch">
+  const link = await get("/api/sync");
+  const scene = link.conflict ? "conflict" : (link.phase === "offline" || link.queue) ? "offline" : "online";
+  root.innerHTML = `<div class="top"><div><h1>EL Workspace — как устроено</h1><div class="sub">Всё живёт дома. GitHub — только зеркало, а не источник правды.</div></div><span class="pill ${scene === "online" ? "ok" : scene === "conflict" ? "bad" : "warn"}">${scene === "online" ? "Зеркало на связи" : scene === "conflict" ? "Зеркало разошлось" : "Зеркало подождёт"}</span></div>
+    <div class="arch" data-sync-scene data-state="${scene === "online" ? "synced" : scene}">
+      <svg class="links ${scene}" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path d="M22 62 C 32 62, 36 55, 46 52"></path>
+        <path d="M40 28 C 44 36, 46 42, 48 48"></path>
+        <path d="M58 48 C 66 40, 70 28, 74 22"></path>
+        <path d="M58 55 C 68 58, 74 64, 78 66"></path>
+      </svg>
       ${node(8, 220, "MacBook", "клиент · меню-бар · el CLI", laptop())}
       ${node(30, 40, "Backup-диск", "git bundle каждую ночь", disk())}
       ${node(38, 180, "Сервер EL", esc(meta.http), server())}
-      ${node(62, 20, "GitHub", "зеркало · push при слиянии", cloud())}
+      ${node(62, 20, "GitHub", scene === "offline" ? `в очереди ${link.queue}` : "зеркало · push при слиянии", cloud())}
       ${node(70, 230, "Windows ПК", "трей · раннер CI", pc())}
     </div>
     <div class="facts">
@@ -589,6 +676,11 @@ async function architecture(root) {
       <div class="card"><b>Офлайн — не беда</b><p class="muted">Push в зеркало копится в очереди и уходит, когда связь вернётся.</p></div>
       <div class="card"><b>Бэкап каждую ночь</b><p class="muted">git bundle всех репозиториев пишется в выбранный каталог.</p></div>
     </div>`;
+}
+
+function syncArt(scene) {
+  const klass = scene === "synced" ? "online" : scene;
+  return `<svg class="links ${klass}" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M22 22 C 40 22, 60 16, 78 16"></path></svg>`;
 }
 
 function node(x, y, title, text, picture) {
@@ -601,16 +693,35 @@ function cloud() { return `<svg viewBox="0 0 120 70"><ellipse cx="60" cy="38" rx
 function pc() { return `<svg viewBox="0 0 120 70"><rect x="16" y="10" width="58" height="40" rx="4" fill="#10192f" stroke="#73a5ff"/><rect x="82" y="16" width="22" height="40" rx="3" fill="#c5ceda"/></svg>`; }
 
 async function panel(root) {
-  const data = await get("/api/panel");
+  let data;
+  try {
+    data = await get("/api/panel");
+  } catch (error) {
+    root.innerHTML = `<section class="panel">
+      <div class="row"><span class="dot bad"></span><div><b>Сервер недоступен</b><div class="tiny">${esc(error.message)}</div></div></div>
+      <div class="row" style="margin-top:12px"><button class="btn" id="retry" type="button">Повторить</button></div>
+    </section>`;
+    root.querySelector("#retry").onclick = () => location.reload();
+    return;
+  }
   const backup = data.backup || {};
+  const link = data.link || {};
+  const offline = link.phase === "offline" || link.queue;
+  const conflict = link.phase === "conflict" || link.conflict;
+  const title = conflict ? "Зеркало разошлось" : offline ? "GitHub недоступен" : "Сервер работает";
   root.innerHTML = `<section class="panel">
-    <div class="row"><span class="dot ok"></span><div><b>Сервер работает</b><div class="tiny">${esc(data.host)} · ssh :${esc(data.sshPort)}</div></div></div>
-    <div class="stats" style="margin-top:12px"><div class="stat"><span class="tiny">Зеркало</span><b>${data.queue ? "очередь" : "синхр."}</b></div><div class="stat"><span class="tiny">Очередь</span><b>${data.queue || "пуста"}</b></div><div class="stat"><span class="tiny">Бэкап</span><b>${esc(backup.label || "")}</b></div></div>
+    <div class="row"><span class="dot ${conflict ? "bad" : offline ? "warn" : "ok"}"></span><div><b>${title}</b><div class="tiny">${esc(data.host)} · ssh :${esc(data.sshPort)}</div></div></div>
+    ${offline || conflict ? `<div class="q">${queueDots(link.jobs)}</div>` : ""}
+    <div class="stats" style="margin-top:12px"><div class="stat"><span class="tiny">Зеркало</span><b>${conflict ? "конфликт" : data.queue ? "очередь" : "синхр."}</b></div><div class="stat"><span class="tiny">Очередь</span><b>${data.queue || "пуста"}</b></div><div class="stat"><span class="tiny">Бэкап</span><b>${esc(backup.time || backup.label || "")}</b></div></div>
     <div class="tiny" style="margin-top:12px">СЕЙЧАС</div>
-    ${(data.items || []).map((item) => `<div class="notice">${statusDot(item.kind === "ci" ? "failed" : "synced")}<div class="grow"><b>${esc(item.title)}</b><div class="tiny">${esc(item.detail || "")}</div></div><a href="${item.kind === "pr" ? `#/r/${item.owner}/${item.name}/pull/${item.number}` : `#/r/${item.owner}/${item.name}`}">${esc(item.action || "Открыть")}</a></div>`).join("")}
+    ${(data.items || []).map((item) => `<div class="notice">${statusDot(item.kind === "ci" ? "failed" : item.kind === "pr" ? "synced" : "warn")}<div class="grow"><b>${esc(item.title)}</b><div class="tiny">${esc(brief(item.detail || ""))}</div></div><a href="${item.kind === "pr" ? `#/r/${item.owner}/${item.name}/pull/${item.number}` : item.kind === "ci" ? `#/r/${item.owner}/${item.name}/ci/${item.id}` : `#/r/${item.owner}/${item.name}`}">${esc(item.action || "Открыть")}</a></div>`).join("")}
     <div class="tiny">НЕДАВНИЕ</div>
     ${(data.recent || []).map((repo) => `<div class="notice">${statusDot(repo.status)}<span class="grow">${esc(repo.name)}</span><span class="mono">${esc(repo.branch)}</span></div>`).join("")}
-    <div class="row" style="margin-top:12px"><a class="btn grow" href="#/" style="text-align:center">Открыть EL Workspace</a><a class="btn ghost" href="#/settings">Синхр.</a></div>
-    <div class="tiny" style="text-align:center">На Windows — та же панель из трея</div>
+    <div class="row" style="margin-top:12px"><a class="btn grow" href="#/" style="text-align:center">Открыть EL Workspace</a><button class="btn ghost" id="close-panel" type="button">Синхр.</button></div>
   </section>`;
+  root.querySelector("#close-panel")?.addEventListener("click", () => {
+    const card = root.querySelector(".panel");
+    card?.classList.add("out");
+    setTimeout(() => { location.hash = "#/settings/mirrors"; }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 120 : 200);
+  });
 }

@@ -73,11 +73,97 @@ func (s *Service) Dashboard() (map[string]any, error) {
 		"repoCount": len(repos), "mirrored": mirrored, "localOnly": localOnly,
 		"attention": attention, "week": week, "repos": cards, "activity": activity,
 		"clone": clone, "counts": counts, "queue": queue, "backup": backup,
+		"link": s.linkState(repos, queue),
 		"server": map[string]any{
 			"host": host, "http": s.PublicHTTP(), "sshPort": s.SSHPort,
 			"queue": queue, "backup": backup, "os": runtime.GOOS,
 		},
 	}, nil
+}
+
+// Link is the mirror queue and the latest CI run. Counts come from stored jobs.
+func (s *Service) Link() (map[string]any, error) {
+	repos, err := s.Store.ListRepos()
+	if err != nil {
+		return nil, err
+	}
+	queue, err := s.Store.CountMirrorQueue()
+	if err != nil {
+		return nil, err
+	}
+	host, _ := os.Hostname()
+	out := s.linkState(repos, queue)
+	out["host"] = host
+	return out, nil
+}
+
+func (s *Service) linkState(repos []store.Repo, queue int) map[string]any {
+	names := map[int64]store.Repo{}
+	synced, offline, conflict, ahead := 0, 0, 0, 0
+	for _, repo := range repos {
+		names[repo.ID] = repo
+		if repo.MirrorMode == "local" || repo.MirrorURL == "" {
+			continue
+		}
+		switch repo.MirrorStatus {
+		case "offline":
+			offline++
+		case "conflict":
+			conflict++
+		case "ahead":
+			ahead++
+			synced++
+		default:
+			synced++
+		}
+	}
+	jobs, _ := s.Store.DueMirrorJobs()
+	queued := make([]map[string]any, 0, len(jobs))
+	for _, job := range jobs {
+		repo := names[job.RepoID]
+		queued = append(queued, map[string]any{
+			"id": job.ID, "owner": repo.Owner, "name": repo.Name,
+			"ref": job.Ref, "status": job.Status, "error": job.Error, "createdAt": job.CreatedAt,
+		})
+	}
+	phase := "idle"
+	switch {
+	case conflict > 0:
+		phase = "conflict"
+	case queue > 0 || offline > 0:
+		phase = "offline"
+	case synced > 0:
+		phase = "synced"
+	}
+	var ci map[string]any
+	if runs, err := s.Store.ListCIRuns(0, 1); err == nil && len(runs) > 0 {
+		run := runs[0]
+		repo := names[run.RepoID]
+		if repo.Name == "" {
+			if loaded, err := s.Store.GetRepoByID(run.RepoID); err == nil {
+				repo = loaded
+			}
+		}
+		ci = map[string]any{
+			"id": run.ID, "status": run.Status, "ref": run.Ref, "workflow": run.Workflow,
+			"owner": repo.Owner, "name": repo.Name, "at": run.FinishedAt,
+		}
+		if run.Status == "running" || run.Status == "queued" {
+			phase = "ci"
+		}
+	}
+	pulls, _ := s.Store.ListPulls(0)
+	incoming := 0
+	for _, pull := range pulls {
+		if pull.Status == "open" {
+			incoming++
+		}
+	}
+	return map[string]any{
+		"phase": phase, "queue": queue, "synced": synced, "offline": offline,
+		"conflict": conflict, "ahead": ahead, "incoming": incoming,
+		"jobs": queued, "ci": ci,
+	}
 }
 
 func (s *Service) repoCard(repo store.Repo) map[string]any {
@@ -106,6 +192,8 @@ func (s *Service) repoCard(repo store.Repo) map[string]any {
 		card["status"] = "local"
 	case repo.MirrorStatus == "offline":
 		card["status"] = "offline"
+	case repo.MirrorStatus == "conflict":
+		card["status"] = "conflict"
 	case repo.MirrorStatus == "ahead":
 		card["status"] = "ahead"
 	default:
@@ -271,7 +359,7 @@ func (s *Service) Panel() (map[string]any, error) {
 	return map[string]any{
 		"host": dash["host"], "sshPort": s.SSHPort, "http": s.PublicHTTP(),
 		"queue": dash["queue"], "backup": dash["backup"], "items": items, "recent": recent,
-		"server": server,
+		"link": dash["link"], "server": server,
 	}, nil
 }
 

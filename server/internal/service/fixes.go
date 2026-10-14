@@ -12,6 +12,20 @@ var (
 	anyNumber   = regexp.MustCompile(`#(\d+)`)
 )
 
+// MirrorLink classifies a failed mirror push.
+// A rejected update is a history conflict. Any other failure leaves the mirror offline.
+func MirrorLink(errText string) string {
+	lower := strings.ToLower(errText)
+	switch {
+	case strings.Contains(lower, "non-fast-forward"),
+		strings.Contains(lower, "failed to push some refs"),
+		strings.Contains(lower, "updates were rejected"):
+		return "conflict"
+	default:
+		return "offline"
+	}
+}
+
 // IssueNumbersClosedBy returns issue numbers a commit message or pull request
 // body would close. "fixes #12" and "fix: сокеты #12" both match.
 func IssueNumbersClosedBy(text string) []int {

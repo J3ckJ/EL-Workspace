@@ -43,6 +43,18 @@ func TestDueBackup(t *testing.T) {
 	}
 }
 
+func TestMirrorLink(t *testing.T) {
+	if MirrorLink("! [rejected] main -> main (non-fast-forward)") != "conflict" {
+		t.Fatal("diverged mirror")
+	}
+	if MirrorLink("failed to push some refs") != "conflict" {
+		t.Fatal("rejected update")
+	}
+	if MirrorLink("ssh: connect to host port 22: connection refused") != "offline" {
+		t.Fatal("network failure stays offline")
+	}
+}
+
 func TestValidStatusSwitch(t *testing.T) {
 	for _, status := range []string{"backlog", "progress", "review", "done"} {
 		if !ValidIssueStatus(status) {

@@ -40,7 +40,7 @@ func (r Runner) RunEnv(dir string, extra []string, args ...string) (string, erro
 		if msg == "" {
 			msg = err.Error()
 		}
-		return stdout.String(), fmt.Errorf("%s", firstLine(msg))
+		return stdout.String(), fmt.Errorf("%s", clip(msg))
 	}
 	return stdout.String(), nil
 }
@@ -62,6 +62,14 @@ func (r Runner) Stream(dir string, stdin io.Reader, stdout, stderr io.Writer, ar
 func firstLine(s string) string {
 	if i := strings.IndexByte(s, '\n'); i >= 0 {
 		return s[:i]
+	}
+	return s
+}
+
+func clip(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) > 800 {
+		return s[:800]
 	}
 	return s
 }
