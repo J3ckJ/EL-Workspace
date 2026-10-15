@@ -811,6 +811,49 @@ function Invoke-LauncherDashboard {
     }
 }
 
+function Get-ElHostBinary {
+    $names = @('el.exe', 'el', 'el-host.exe', 'el-host')
+    $roots = @(
+        (Join-Path $PSScriptRoot 'bin'),
+        (Join-Path $PSScriptRoot '..\..\server\bin')
+    )
+    foreach ($root in $roots) {
+        foreach ($name in $names) {
+            $candidate = Join-Path $root $name
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                return (Resolve-Path -LiteralPath $candidate).Path
+            }
+        }
+    }
+    foreach ($name in @('el-host', 'el-host.exe')) {
+        $command = Get-Command $name -ErrorAction SilentlyContinue
+        if ($command -and $command.Source) {
+            return $command.Source
+        }
+    }
+    return $null
+}
+
+function Invoke-ElGitHost {
+    param([Parameter(Mandatory)][object[]] $Arguments)
+
+    $binary = Get-ElHostBinary
+    if (-not $binary) {
+        throw @'
+Локальный Git-сервер не собран. Из каталога server:
+  go build -o bin/el ./cmd/el
+На Windows:
+  go build -o bin\el.exe .\cmd\el
+Подробности: docs/local-git.md
+'@
+    }
+    & $binary @Arguments
+    if ($null -eq $global:LASTEXITCODE) {
+        $global:LASTEXITCODE = 0
+    }
+    $script:LastManagerExitCode = [int] $global:LASTEXITCODE
+}
+
 function Show-ElHelp {
     Write-Host @'
 
@@ -825,9 +868,15 @@ function Show-ElHelp {
   el unpin <project>         Убрать из избранного
   el last                    Открыть последний проект
   el status [project]        Краткий статус
+  el serve                   Локальный Git-хост (веб, SSH, smart HTTP)
+  el pr checkout <n>         Переключить текущий клон на ветку PR
+  el release <tag> --from-ci Собрать релиз из последней зелёной сборки
+  el panel                   Меню-бар / трей: снимок сервера
   el help                    Эта справка
 
   Все команды el-project также доступны через el.
+  Команды serve, pr, release, panel и key вызывает собранный бинарник el.
+  Сборка и запуск: docs/local-git.md.
 
 '@ -ForegroundColor White
 }
@@ -956,6 +1005,9 @@ try {
             'open', 'remove', 'sync', 'doctor', 'trust-git', 'untrust-git'
         ) } {
             Invoke-Manager -Arguments $inputArguments
+        }
+        { $_ -in @('serve', 'pr', 'release', 'panel', 'key') } {
+            Invoke-ElGitHost -Arguments $inputArguments
         }
         default {
             [void] (Invoke-OpenAndRemember `
