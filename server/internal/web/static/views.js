@@ -58,8 +58,7 @@ async function dashboard(root, openPalette) {
       </section>
       <section class="card">
         <div class="kicker">Ветки за неделю</div>
-        ${weekChart(data.week)}
-        <div class="days">${labels.map((label) => `<span>${esc(label)}</span>`).join("")}</div>
+        ${weekChart(data.week, labels)}
       </section>
     </div>
     <div class="grid-3" style="margin-top:16px">
@@ -92,24 +91,46 @@ function linkBanner(link) {
   return "";
 }
 
-function weekChart(week) {
-  const series = (week || []).slice(0, 5);
-  const width = 320;
-  const height = 120;
-  const max = Math.max(1, ...series.flatMap((repo) => repo.days || [0]));
-  const marks = series.map((repo, index) => {
-    const days = repo.days || [];
-    const points = days.map((count, day) => {
-      const x = days.length <= 1 ? 0 : (day / (days.length - 1)) * width;
-      const y = height - 10 - (count / max) * (height - 24);
-      return [x, y];
-    });
-    const path = points.map((point, i) => `${i ? "L" : "M"}${point[0].toFixed(1)},${point[1].toFixed(1)}`).join(" ");
-    const dots = points.map((point) => `<circle class="s${index}" cx="${point[0].toFixed(1)}" cy="${point[1].toFixed(1)}" r="3.2"></circle>`).join("");
-    return `<path class="s${index}" d="${path}"></path>${dots}`;
+function weekValues(days) {
+  const src = Array.isArray(days) ? days.map((value) => {
+    const count = Number(value);
+    return Number.isFinite(count) && count > 0 ? count : 0;
+  }) : [];
+  if (src.length > 7) return src.slice(-7);
+  if (src.length === 7) return src;
+  return Array(7 - src.length).fill(0).concat(src);
+}
+
+function weekChart(week, labels) {
+  const all = week || [];
+  const series = all.slice(0, 8);
+  const rows = series.map((repo) => weekValues(repo.days));
+  const max = Math.max(1, ...rows.flat());
+  const width = 700;
+  const height = 100;
+  const yOf = (count) => 16 + (1 - count / max) * 70;
+  const body = series.map((repo, index) => {
+    const values = rows[index];
+    const total = values.reduce((sum, count) => sum + count, 0);
+    const points = values.map((count, day) => {
+      const x = ((day + 0.5) / 7) * width;
+      return `${x.toFixed(1)},${yOf(count).toFixed(1)}`;
+    }).join(" ");
+    const dots = values.map((count) => count
+      ? `<span><i class="pt" style="--y:${yOf(count).toFixed(1)}%" title="${count}"></i></span>`
+      : "<span></span>").join("");
+    const line = total
+      ? `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${points}"></polyline></svg><div class="week-cols">${dots}</div>`
+      : "";
+    const spoken = total ? `${total} за неделю` : "нет коммитов за неделю";
+    return `<div class="week-row s${index}${total ? "" : " is-empty"}">
+      <div class="week-name" title="${esc(repo.name)}"><i class="swatch"></i><b>${esc(repo.name)}</b><em>${total}</em></div>
+      <div class="week-plot" role="img" aria-label="${esc(repo.name)}: ${spoken}">${line}</div>
+    </div>`;
   }).join("");
-  const legend = series.map((repo, index) => `<span><i class="dot s${index}"></i> ${esc(repo.name)}</span>`).join("");
-  return `<svg class="week-chart" viewBox="0 0 ${width} ${height}" role="img">${marks}</svg><div class="legend">${legend}</div>`;
+  const axis = (labels || []).slice(0, 7).map((label) => `<span>${esc(label)}</span>`).join("");
+  const more = all.length > series.length ? `<div class="tiny">ещё ${all.length - series.length}</div>` : "";
+  return `<div class="week">${body}<div class="week-axis"><span></span><div class="days">${axis}</div></div>${more}</div>`;
 }
 
 function attentionHref(item) {
