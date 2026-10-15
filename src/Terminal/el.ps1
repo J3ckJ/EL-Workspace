@@ -840,8 +840,10 @@ function Invoke-ElGitHost {
     $binary = Get-ElHostBinary
     if (-not $binary) {
         throw @'
-Локальный Git-сервер не собран. Из корня репозитория:
-  go build -o server/bin/el ./server/cmd/el
+Локальный Git-сервер не собран. Из каталога server:
+  go build -o bin/el ./cmd/el
+На Windows:
+  go build -o bin\el.exe .\cmd\el
 Подробности: docs/local-git.md
 '@
     }

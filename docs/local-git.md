@@ -29,7 +29,9 @@ Go, а поведение протокола всё равно определя�
 
 - Git 2.30 или новее в `PATH` (нужны `upload-pack`, `receive-pack`,
   `merge-tree`, `bundle`).
-- Go 1.22 или новее, только чтобы собрать бинарник.
+- Go 1.22 или новее, только чтобы собрать бинарник. На Mac:
+  `brew install go`. На Windows, в PowerShell 7: `winget install GoLang.Go`.
+  После установки откройте терминал заново, иначе `go` не попадёт в `PATH`.
 - Для шагов workflow с `shell: pwsh` — PowerShell 7. Обычные шаги `run`
   идут через bash, а если его нет — через `sh`.
 
@@ -39,11 +41,14 @@ Go, а поведение протокола всё равно определя�
 
 ## macOS
 
+Модуль Go лежит в `server/`, не в корне репозитория. Сборка из корня
+заканчивается `go: cannot find main module`.
+
 ```bash
 git clone https://github.com/J3ckJ/EL-Workspace.git
 cd EL-Workspace
-go build -o server/bin/el ./server/cmd/el
-./server/bin/el serve
+cd server && go build -o bin/el ./cmd/el
+./bin/el serve
 ```
 
 Откройте `http://127.0.0.1:8080`. Данные лягут в
@@ -53,7 +58,7 @@ go build -o server/bin/el ./server/cmd/el
 лежит `~/.ssh/id_ed25519.pub`. Иначе:
 
 ```bash
-./server/bin/el key add ~/.ssh/id_ed25519.pub --title "MacBook"
+./bin/el key add ~/.ssh/id_ed25519.pub --title "MacBook"
 ```
 
 Клонирование:
@@ -69,11 +74,21 @@ SwiftBar положите [`panel/el-menubar.sh`](../panel/el-menubar.sh) в к�
 
 ## Windows
 
-Нужны PowerShell 7 и Git for Windows. Сборка из корня репозитория:
+Нужны PowerShell 7 и Git for Windows. Если `go` ещё нет:
 
 ```powershell
-go build -o server\bin\el.exe .\server\cmd\el
-.\server\bin\el.exe serve
+winget install GoLang.Go
+```
+
+Закройте окно терминала и откройте новое, затем соберите из каталога `server`.
+Флаг `-o` пишет файл ровно под указанным именем и сам `.exe` не добавляет,
+поэтому на Windows имя — `bin\el.exe`. Локальный путь `.\cmd\el` Go на
+Windows принимает и переводит обратные слэши в обычные.
+
+```powershell
+cd EL-Workspace
+cd server && go build -o bin\el.exe .\cmd\el
+.\bin\el.exe serve
 ```
 
 Либо, когда бинарник уже лежит в `server\bin` или в `src\Terminal\bin`:

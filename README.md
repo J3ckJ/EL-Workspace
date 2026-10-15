@@ -336,17 +336,25 @@ Node.js для запуска не нужен. Почему выбран име�
 его на Mac и Windows и как устроены очередь, сборки и бэкап, написано в
 [docs/local-git.md](docs/local-git.md).
 
-Коротко, из корня репозитория:
+Модуль лежит в `server/`. Go ставится так: на Mac `brew install go`, на
+Windows `winget install GoLang.Go`. После установки откройте терминал заново.
 
 ```bash
-go build -o server/bin/el ./server/cmd/el
-./server/bin/el serve
+cd server && go build -o bin/el ./cmd/el
+./bin/el serve
 ```
 
-На Windows, когда `server\bin\el.exe` уже собран, достаточно `el serve` в
-PowerShell 7. Каталог данных — `%LOCALAPPDATA%\EL-System-Tools\Git`, на
-macOS и Linux — `~/.local/share/el-workspace`. По умолчанию HTTP и SSH
-слушают только `127.0.0.1`.
+На Windows та же сборка из `server`:
+
+```powershell
+cd server && go build -o bin\el.exe .\cmd\el
+.\bin\el.exe serve
+```
+
+Когда `server\bin\el.exe` уже собран, в PowerShell 7 достаточно `el serve`.
+Каталог данных — `%LOCALAPPDATA%\EL-System-Tools\Git`, на macOS и Linux —
+`~/.local/share/el-workspace`. По умолчанию HTTP и SSH слушают только
+`127.0.0.1`.
 
 В сайдбаре переключаются EL Midnight и светлая тема. Пустой хост, недоступный
 сервер, очередь зеркала и расхождение истории показываются отдельными
